@@ -1,6 +1,6 @@
-// Supabase configuration
-const SUPABASE_URL = 'https://ocwdwgttgtfvugxgxxao.supabase.co';  // Replace with your Supabase URL
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jd2R3Z3R0Z3RmdnVneGd4eGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzODg4NjMsImV4cCI6MjA2OTk2NDg2M30.PryMxAvzZ7Rr4WYgPmkVBO17iqbfaEPM3sasREXSACg';  // Replace with your anon key
+// Supabase configuration with your actual credentials
+const SUPABASE_URL = 'https://ocwdwgttgtfvugxgxxao.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jd2R3Z3R0Z3RmdnVneGd4eGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzODg4NjMsImV4cCI6MjA2OTk2NDg2M30.PryMxAvzZ7Rr4WYgPmkVBO17iqbfaEPM3sasREXSACg';
 
 // Initialize Supabase client
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -40,52 +40,97 @@ let currentUser = null;
 let selectedFiles = [];
 let uploadedFiles = [];
 
+// Rate limiting state
+let lastSignupAttempt = 0;
+let lastLoginAttempt = 0;
+const RATE_LIMIT_DELAY = 8000; // 8 seconds to be safe
+
 // Upload configuration
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
 const BUCKET_NAME = 'uploads'; // Your Supabase bucket name
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async function() {
-    // Check if user is already logged in
-    const { data: { session } } = await supabase.auth.getSession();
+    console.log('🚀 App initializing...');
+    console.log('🔧 Supabase URL:', SUPABASE_URL);
+    console.log('🔑 Supabase Key (first 20 chars):', SUPABASE_ANON_KEY.substring(0, 20) + '...');
     
-    if (session) {
-        currentUser = session.user;
-        showDashboard();
-        await loadUserFiles();
-    } else {
-        showPage('home');
-    }
-    
-    // Initialize upload functionality
-    initializeUpload();
-    
-    // Listen for auth changes
-    supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN') {
+    try {
+        // Check if user is already logged in
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+            console.log('✅ User already logged in:', session.user.email);
             currentUser = session.user;
             showDashboard();
-            loadUserFiles();
-        } else if (event === 'SIGNED_OUT') {
-            currentUser = null;
-            showLoggedOutState();
+            await loadUserFiles();
+        } else {
+            console.log('👤 No active session, showing home page');
+            showPage('home');
         }
-    });
+        
+        // Initialize upload functionality
+        initializeUpload();
+        
+        // Listen for auth changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            console.log('🔄 Auth state changed:', event, session?.user?.email);
+            if (event === 'SIGNED_IN') {
+                currentUser = session.user;
+                showDashboard();
+                loadUserFiles();
+            } else if (event === 'SIGNED_OUT') {
+                currentUser = null;
+                showLoggedOutState();
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ App initialization error:', error);
+        showNotification('Failed to initialize app: ' + error.message, 'error');
+    }
 });
+
+// Rate limiting helper
+function canMakeRequest(type) {
+    const now = Date.now();
+    const lastAttempt = type === 'signup' ? lastSignupAttempt : lastLoginAttempt;
+    const timeSinceLastAttempt = now - lastAttempt;
+    
+    if (timeSinceLastAttempt < RATE_LIMIT_DELAY) {
+        const remainingTime = Math.ceil((RATE_LIMIT_DELAY - timeSinceLastAttempt) / 1000);
+        showNotification(`Please wait ${remainingTime} more seconds before trying again.`, 'error');
+        return false;
+    }
+    
+    if (type === 'signup') {
+        lastSignupAttempt = now;
+    } else {
+        lastLoginAttempt = now;
+    }
+    
+    return true;
+}
 
 // Initialize upload functionality
 function initializeUpload() {
+    if (!uploadArea || !fileInput) return;
+    
     uploadArea.addEventListener('click', () => fileInput.click());
-    browseLink.addEventListener('click', (e) => {
-        e.stopPropagation();
-        fileInput.click();
-    });
+    if (browseLink) {
+        browseLink.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+    }
 
     fileInput.addEventListener('change', handleFileSelect);
     uploadArea.addEventListener('dragover', handleDragOver);
     uploadArea.addEventListener('dragleave', handleDragLeave);
     uploadArea.addEventListener('drop', handleFileDrop);
-    uploadBtn.addEventListener('click', performSupabaseUpload);
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', performSupabaseUpload);
+    }
 }
 
 // Handle file selection
@@ -135,6 +180,8 @@ function addFilesToSelection(files) {
 
 // Display selected files
 function displaySelectedFiles() {
+    if (!selectedFilesDiv || !filesList) return;
+    
     if (selectedFiles.length === 0) {
         selectedFilesDiv.classList.add('hidden');
         return;
@@ -190,6 +237,8 @@ async function performSupabaseUpload() {
         return;
     }
     
+    if (!uploadBtn) return;
+    
     showNotification('Starting upload to Supabase...', 'info');
     uploadBtn.disabled = true;
     uploadBtn.textContent = 'Uploading...';
@@ -224,6 +273,9 @@ async function performSupabaseUpload() {
             errorCount++;
             showNotification(`Failed to upload ${file.name}`, 'error');
         }
+        
+        // Small delay between uploads
+        await new Promise(resolve => setTimeout(resolve, 500));
     }
     
     // Reset UI
@@ -281,6 +333,8 @@ async function loadUserFiles() {
 
 // Display uploaded files
 function displayUploadedFiles() {
+    if (!uploadedFilesList) return;
+    
     if (uploadedFiles.length === 0) {
         uploadedFilesList.innerHTML = '<p style="color: #666; text-align: center; padding: 1rem;">No files uploaded yet. Upload your first file above!</p>';
         return;
@@ -369,7 +423,7 @@ function formatFileSize(bytes) {
 // Page navigation functions
 function showPage(pageName) {
     Object.values(pages).forEach(page => {
-        page.classList.remove('active');
+        if (page) page.classList.remove('active');
     });
     
     if (pages[pageName]) {
@@ -379,54 +433,63 @@ function showPage(pageName) {
 
 function showDashboard() {
     showPage('dashboard');
-    document.getElementById('userNameDisplay').textContent = `Welcome, ${currentUser.email}!`;
-    const emailDisplay = document.getElementById('userEmailDisplay');
-    if (emailDisplay) {
-        emailDisplay.textContent = currentUser.email;
+    const userNameDisplay = document.getElementById('userNameDisplay');
+    const userEmailDisplay = document.getElementById('userEmailDisplay');
+    
+    if (userNameDisplay) {
+        userNameDisplay.textContent = `Welcome, ${currentUser.email}!`;
+    }
+    if (userEmailDisplay) {
+        userEmailDisplay.textContent = currentUser.email;
     }
     
-    loginBtn.classList.add('hidden');
-    signupBtn.classList.add('hidden');
-    logoutBtn.classList.remove('hidden');
+    if (loginBtn) loginBtn.classList.add('hidden');
+    if (signupBtn) signupBtn.classList.add('hidden');
+    if (logoutBtn) logoutBtn.classList.remove('hidden');
 }
 
 function showLoggedOutState() {
     showPage('home');
-    document.getElementById('welcomeMessage').textContent = 'Please login or sign up to get started';
+    const welcomeMessage = document.getElementById('welcomeMessage');
+    if (welcomeMessage) {
+        welcomeMessage.textContent = 'Please login or sign up to get started';
+    }
     
-    loginBtn.classList.remove('hidden');
-    signupBtn.classList.remove('hidden');
-    logoutBtn.classList.add('hidden');
+    if (loginBtn) loginBtn.classList.remove('hidden');
+    if (signupBtn) signupBtn.classList.remove('hidden');
+    if (logoutBtn) logoutBtn.classList.add('hidden');
     
     uploadedFiles = [];
     displayUploadedFiles();
 }
 
 // Event listeners for navigation
-loginBtn.addEventListener('click', () => showPage('login'));
-signupBtn.addEventListener('click', () => showPage('signup'));
-heroLoginBtn.addEventListener('click', () => showPage('login'));
-switchToSignup.addEventListener('click', () => showPage('signup'));
-switchToLogin.addEventListener('click', () => showPage('login'));
-logoutBtn.addEventListener('click', logout);
+if (loginBtn) loginBtn.addEventListener('click', () => showPage('login'));
+if (signupBtn) signupBtn.addEventListener('click', () => showPage('signup'));
+if (heroLoginBtn) heroLoginBtn.addEventListener('click', () => showPage('login'));
+if (switchToSignup) switchToSignup.addEventListener('click', () => showPage('signup'));
+if (switchToLogin) switchToLogin.addEventListener('click', () => showPage('login'));
+if (logoutBtn) logoutBtn.addEventListener('click', logout);
 
 // Form submissions
-loginForm.addEventListener('submit', handleLogin);
-signupForm.addEventListener('submit', handleSignup);
+if (loginForm) loginForm.addEventListener('submit', handleLogin);
+if (signupForm) signupForm.addEventListener('submit', handleSignup);
 
-// Login handler with Supabase
-// Replace your login handler with this debug version
+// Login handler with Supabase and rate limiting
 async function handleLogin(e) {
     e.preventDefault();
+    
+    if (!canMakeRequest('login')) {
+        return;
+    }
     
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
     
-    console.log('🔍 Login attempt:', { email, password: password ? '***' : 'empty' });
-    console.log('🔍 Supabase config:', { url: SUPABASE_URL, hasKey: !!SUPABASE_ANON_KEY });
+    console.log('🔍 Login attempt:', { email, hasPassword: !!password });
     
     try {
-        showNotification('Attempting login...', 'info');
+        showNotification('Signing in...', 'info');
         
         const { data, error } = await supabase.auth.signInWithPassword({
             email: email,
@@ -443,13 +506,15 @@ async function handleLogin(e) {
                 showNotification('Invalid email or password. Please check your credentials.', 'error');
             } else if (error.message.includes('Email not confirmed')) {
                 showNotification('Please check your email and confirm your account first.', 'error');
+            } else if (error.message.includes('security purposes')) {
+                showNotification('Rate limited. Please wait a moment before trying again.', 'error');
             } else {
                 showNotification('Login failed: ' + error.message, 'error');
             }
         } else if (data.user) {
-            console.log('✅ Login successful:', data.user);
+            console.log('✅ Login successful:', data.user.email);
             showNotification('Login successful!', 'success');
-            loginForm.reset();
+            if (loginForm) loginForm.reset();
         } else {
             console.log('⚠️ No user returned');
             showNotification('Login failed - no user data returned', 'error');
@@ -460,10 +525,13 @@ async function handleLogin(e) {
     }
 }
 
-
-// Signup handler with Supabase
+// Signup handler with Supabase and rate limiting
 async function handleSignup(e) {
     e.preventDefault();
+    
+    if (!canMakeRequest('signup')) {
+        return;
+    }
     
     const email = document.getElementById('signupEmail').value;
     const password = document.getElementById('signupPassword').value;
@@ -479,28 +547,48 @@ async function handleSignup(e) {
         return;
     }
     
+    console.log('🔍 Signup attempt:', { email, hasPassword: !!password });
+    
     try {
+        showNotification('Creating account...', 'info');
+        
         const { data, error } = await supabase.auth.signUp({
             email: email,
             password: password
         });
 
+        console.log('🔍 Signup response:', { data, error });
+
         if (error) {
-            showNotification('Signup failed: ' + error.message, 'error');
+            console.error('❌ Signup error:', error);
+            
+            if (error.message.includes('security purposes')) {
+                showNotification('Rate limited. Please wait 8 seconds before trying again.', 'error');
+            } else if (error.message.includes('already registered')) {
+                showNotification('This email is already registered. Try logging in instead.', 'error');
+            } else {
+                showNotification('Signup failed: ' + error.message, 'error');
+            }
         } else {
-            showNotification('Account created! Please check your email to verify your account.', 'success');
-            signupForm.reset();
+            console.log('✅ Signup successful:', data);
+            showNotification('Account created successfully! You can now login.', 'success');
+            if (signupForm) signupForm.reset();
             showPage('login');
         }
     } catch (error) {
-        console.error('Signup error:', error);
-        showNotification('Signup failed. Please try again.', 'error');
+        console.error('❌ Signup exception:', error);
+        if (error.message.includes('JSON')) {
+            showNotification('❌ Configuration error: Invalid Supabase credentials.', 'error');
+        } else {
+            showNotification('Signup failed: ' + error.message, 'error');
+        }
     }
 }
 
 // Logout handler
 async function logout() {
     try {
+        showNotification('Signing out...', 'info');
         const { error } = await supabase.auth.signOut();
         if (error) {
             showNotification('Logout failed: ' + error.message, 'error');
@@ -563,5 +651,28 @@ function showNotification(message, type = 'info') {
                 notification.remove();
             }
         }, 300);
-    }, 3000);
+    }, 4000);
 }
+
+// Test function for development
+async function testSupabaseConnection() {
+    console.log('🧪 Testing Supabase connection...');
+    console.log('URL:', SUPABASE_URL);
+    console.log('Key (first 20 chars):', SUPABASE_ANON_KEY.substring(0, 20) + '...');
+    
+    try {
+        const { data, error } = await supabase.auth.getSession();
+        console.log('✅ Supabase connection successful:', { data, error });
+        showNotification('✅ Supabase connection working!', 'success');
+        return true;
+    } catch (error) {
+        console.error('❌ Supabase connection failed:', error);
+        showNotification('❌ Supabase connection failed: ' + error.message, 'error');
+        return false;
+    }
+}
+
+// Make test function available globally for debugging
+window.testSupabaseConnection = testSupabaseConnection;
+
+console.log('✅ Script loaded successfully');
