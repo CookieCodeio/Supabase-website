@@ -1,5 +1,5 @@
 // Supabase configuration
-const SUPABASE_URL = 'https://supabase-website-seven.vercel.app/';  // Replace with your Supabase URL
+const SUPABASE_URL = 'https://ocwdwgttgtfvugxgxxao.supabase.co';  // Replace with your Supabase URL
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jd2R3Z3R0Z3RmdnVneGd4eGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzODg4NjMsImV4cCI6MjA2OTk2NDg2M30.PryMxAvzZ7Rr4WYgPmkVBO17iqbfaEPM3sasREXSACg';  // Replace with your anon key
 
 // Initialize Supabase client
