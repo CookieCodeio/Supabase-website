@@ -1,5 +1,5 @@
 // Supabase configuration
-const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';  // Replace with your Supabase URL
+const SUPABASE_URL = 'https://supabase-website-seven.vercel.app/';  // Replace with your Supabase URL
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jd2R3Z3R0Z3RmdnVneGd4eGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzODg4NjMsImV4cCI6MjA2OTk2NDg2M30.PryMxAvzZ7Rr4WYgPmkVBO17iqbfaEPM3sasREXSACg';  // Replace with your anon key
 
 // Initialize Supabase client
@@ -415,29 +415,51 @@ loginForm.addEventListener('submit', handleLogin);
 signupForm.addEventListener('submit', handleSignup);
 
 // Login handler with Supabase
+// Replace your login handler with this debug version
 async function handleLogin(e) {
     e.preventDefault();
     
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
     
+    console.log('🔍 Login attempt:', { email, password: password ? '***' : 'empty' });
+    console.log('🔍 Supabase config:', { url: SUPABASE_URL, hasKey: !!SUPABASE_ANON_KEY });
+    
     try {
+        showNotification('Attempting login...', 'info');
+        
         const { data, error } = await supabase.auth.signInWithPassword({
             email: email,
             password: password
         });
 
+        console.log('🔍 Login response:', { data, error });
+
         if (error) {
-            showNotification('Login failed: ' + error.message, 'error');
-        } else {
+            console.error('❌ Login error:', error);
+            
+            // Specific error messages
+            if (error.message === 'Invalid login credentials') {
+                showNotification('Invalid email or password. Please check your credentials.', 'error');
+            } else if (error.message.includes('Email not confirmed')) {
+                showNotification('Please check your email and confirm your account first.', 'error');
+            } else {
+                showNotification('Login failed: ' + error.message, 'error');
+            }
+        } else if (data.user) {
+            console.log('✅ Login successful:', data.user);
             showNotification('Login successful!', 'success');
             loginForm.reset();
+        } else {
+            console.log('⚠️ No user returned');
+            showNotification('Login failed - no user data returned', 'error');
         }
     } catch (error) {
-        console.error('Login error:', error);
-        showNotification('Login failed. Please try again.', 'error');
+        console.error('❌ Login exception:', error);
+        showNotification('Login failed: Network or configuration error', 'error');
     }
 }
+
 
 // Signup handler with Supabase
 async function handleSignup(e) {
