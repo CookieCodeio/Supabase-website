@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyWebsite - Welcome</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-logo">MyWebsite</h1>
+            <div class="nav-buttons">
+                <button id="loginBtn" class="nav-btn">Login</button>
+                <button id="signupBtn" class="nav-btn">Sign Up</button>
+                <button id="logoutBtn" class="nav-btn hidden">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Home Page -->
+    <div id="homePage" class="page active">
+        <div class="hero-section">
+            <h1>Welcome to MyWebsite</h1>
+            <p id="welcomeMessage">Please login or sign up to get started</p>
+            <div class="hero-buttons">
+                <button id="heroLoginBtn" class="btn-primary">Get Started</button>
+            </div>
+        </div>
+
+        <!-- File Upload Section -->
+        <div class="upload-section">
+            <div class="container">
+                <h2>📁 File Upload Center</h2>
+                <p>Securely upload your files to Supabase Storage</p>
+                
+                <!-- Upload Area -->
+                <div id="uploadArea" class="upload-area">
+                    <div class="upload-icon">📁</div>
+                    <h3>Drag & Drop Files Here</h3>
+                    <p>or <span class="browse-link">browse files</span></p>
+                    <input type="file" id="fileInput" multiple hidden>
+                    <div class="upload-info">
+                        <small>Supported formats: All file types • Max size: 50MB per file</small>
+                    </div>
+                </div>
+
+                <!-- Selected Files Display -->
+                <div id="selectedFiles" class="selected-files hidden">
+                    <h4>Selected Files:</h4>
+                    <div id="filesList" class="files-list"></div>
+                    <button id="uploadBtn" class="btn-primary upload-btn">Upload to Supabase</button>
+                </div>
+
+                <!-- Uploaded Files Display -->
+                <div id="uploadedFiles" class="uploaded-files">
+                    <h4>Your Uploaded Files:</h4>
+                    <div id="uploadedFilesList" class="files-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Page -->
+    <div id="loginPage" class="page">
+        <div class="auth-container">
+            <h2>Login with Supabase</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email:</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password:</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn-primary">Login</button>
+                <p class="auth-switch">Don't have an account? <span id="switchToSignup">Sign up here</span></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Signup Page -->
+    <div id="signupPage" class="page">
+        <div class="auth-container">
+            <h2>Sign Up with Supabase</h2>
+            <form id="signupForm">
+                <div class="form-group">
+                    <label for="signupEmail">Email:</label>
+                    <input type="email" id="signupEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupPassword">Password:</label>
+                    <input type="password" id="signupPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password:</label>
+                    <input type="password" id="confirmPassword" required>
+                </div>
+                <button type="submit" class="btn-primary">Sign Up</button>
+                <p class="auth-switch">Already have an account? <span id="switchToLogin">Login here</span></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboardPage" class="page">
+        <div class="dashboard-container">
+            <h1>Dashboard</h1>
+            <div class="user-info">
+                <h3 id="userNameDisplay">Welcome, User!</h3>
+                <p id="userEmailDisplay">Your email will appear here</p>
+            </div>
+            <div class="dashboard-content">
+                <div class="card">
+                    <h4>Your Files</h4>
+                    <p id="fileCount">Loading your files...</p>
+                </div>
+                <div class="card">
+                    <h4>Account Settings</h4>
+                    <p>Manage your Supabase account preferences.</p>
+                </div>
+                <div class="card">
+                    <h4>Storage Usage</h4>
+                    <p>Monitor your file storage usage.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
